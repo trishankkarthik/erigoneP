@@ -1,0 +1,1530 @@
+\documentclass[11pt]{article}
+\usepackage{mathpazo}
+\usepackage{url}
+\usepackage{verbatim}
+
+\newcommand*{\prg}{\textsc{Erigone}}
+\newcommand*{\trc}{\textsc{Trace}}
+\newcommand*{\spn}{\textsc{Spin}}
+\newcommand*{\prm}{\textsc{Promela}}
+\newcommand*{\ada}{\textsc{Ada 2005}}
+\newcommand*{\gnat}{\textsc{gnat}}
+\newcommand*{\smc}{\textit{SMC}}
+\newcommand*{\p}[1]{\texttt{#1}}
+
+\textwidth=15cm
+\textheight=22cm
+\topmargin=0pt
+\headheight=0pt
+\oddsidemargin=1cm
+\headsep=0pt
+\renewcommand{\baselinestretch}{1.1}
+\setlength{\parskip}{0.20\baselineskip plus 1pt minus 1pt}
+\parindent=0pt
+
+\title{The \prg{} Model Checker\\\mbox{}\\\large{Version 1.1.4}}
+\author{Mordechai (Moti) Ben-Ari\\
+Department of Science Teaching\\
+Weizmann Institute of Science\\
+Rehovot 76100 Israel\\
+\textsf{http://stwww.weizmann.ac.il/g-cs/benari/}}
+%\date{}
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+\vfill
+
+\begin{center}
+Copyright \copyright{} 2007-9 by Mordechai (Moti) Ben-Ari.
+\end{center}
+This work is licensed under the Creative Commons Attribution-ShareAlike 3.0
+License. To view a copy of this license, visit
+\url{http://creativecommons.org/licenses/by-sa/3.0/}; or, (b) send a letter
+to Creative Commons, 543 Howard Street, 5th Floor, San Francisco,
+California, 94105, USA.
+
+
+\newpage
+
+\section{Introduction}
+
+\prg{} is a partial reimplementation of the \spn{} Model Checker. The goal
+is to facilitate learning concurrency and model checking.
+\begin{itemize}
+\item \prg{} is single, self-contained, executable file so that
+installation and use are trivial.
+\item \prg{} produces a detailed trace of the model checking
+algorithms. The contents of the trace are customizable and a uniform
+keyword-based format is used that can be directly read or used by other
+tools.
+\item Extensive modularization is used in the design of the \prg{}
+program to facilitate understanding the source code. This will also
+enable researchers to easily modify and extend the program.
+\end{itemize}
+\prg{} implements a subset of \prm{} that is sufficient for
+demonstrating the basic concepts of model checking for the verification
+of concurrent programs. No language constructs are added so that
+programs for \prg{} can be used with \spn{} when more expressiveness and
+better performance are desired.
+
+\prg{} is written in \ada{} for reliability, maintainability and
+portability. No non-standard constructs are used.
+
+The \prg{} software is copyrighted under the \textsc{GNU} General Public
+License. The copyright statement and the text of the license are
+included in the distribution archive.
+
+This document is divided into two parts: the user's guide and
+the documentation of the software structure.
+
+\subsection*{Acknowledgements}
+I would like to thank Gerard J. Holzmann for his generous assistance
+throughout the development of this project. The compiler was developed
+by Trishank Karthik Kuppusamy under the supervision of Edmond Schonberg.
+
+\section{References}
+\begin{itemize}
+\item Christel Baier and Joost-Pieter Katoen.
+\textit{Principles of Model Checking}. MIT Press, 2008. 
+\item M. Ben-Ari. \textit{Ada for Software Engineers
+(Second Edition with Ada 2005)}. Springer, 2009.
+\item M. Ben-Ari. \textit{Principles of the Spin Model Checker}. Springer, 2008.
+\item M. Ben-Ari. \textit{Principles of Concurrent and Distributed Programming (Second
+Edition)}. Addison-Wesley, 2006.
+\item Gerard J. Holzmann. \textit{The Spin Model Checker: Primer
+and Reference Manual}.\\Addison-Wesley, 2004. The abbreviation
+\smc{} is used to refer to this book.
+\item Fred Kr\"{o}ger and Stephan Merz.
+\textit{Temporal Logic and State Systems}. Springer, 2008.
+\end{itemize}
+
+\begin{tabular}{l@{\hspace{3em}}l}
+\hline
+\prg{} & \url{http://stwww.weizmann.ac.il/g-cs/benari/erigone/}\\
+& \url{http://code.google.com/p/erigone/}\\
+\gnat{} & \url{https://libre.adacore.com/}\\
+\spn{} & \url{http://spinroot.com/}\\
+\hline
+\end{tabular}
+
+\section{Installation, building and execution}
+\begin{itemize}
+\item \textbf{Installation}\\Download the archive \p{erigone-N.zip}
+from Google Code. Open the archive
+to a clean directory. The source code is in the archive
+\p{erigone-source-N.zip}. The executable files are \p{erigone.exe}
+and \p{trace.exe}. The subdirectories are:
+\begin{itemize}
+\item \p{docs}: documentation;
+\item \p{examples}: \prm{} source code of example programs;
+\item \p{src}: the source code of \prg{};
+\item \p{trace}: the source code of the \trc{} program  (see
+Section ~\ref{s.trace}).
+\end{itemize}
+The file \p{readme.txt} in \p{examples} describes the expected output
+when verifying the \prm{} programs in the directory.
+
+\item \textbf{Execution}
+\begin{verbatim}
+erigone [arguments] filename
+\end{verbatim}
+
+\item \textbf{File names}\\
+If an extension is not given in \p{filename}, the default \prm{} source
+file extension is \p{pml}. Other file names are obtained by using the
+file root and predefined extensions: The result of compiling the program
+is a file with extension \p{aut} that describes the automata . The trail
+file extension is \p{trl}. If the LTL correctness property \p{filename} is
+not given, the default is the root with extension \p{prp}.
+
+\item \textbf{Build}\\\prg{} was built with the \gnat{} \ada{} compiler.
+The source code is divided into several subdirectories and the \gnat{}
+Project Manager is used to build the program. The file \p{erigone.gpr}
+describes the project configuration. To build, execute:
+\begin{verbatim}
+gnatmake -Perigone [-O1] [-gnatn]
+\end{verbatim}
+Optimization level \p{-O1} significantly improves the performance of the
+software; \p{-gnatn} enables inlining of subprograms.
+
+Object files are placed in a subdirectory of \p{src} called \p{obj}; it
+must exist before executing the project manager.
+\end{itemize}
+
+\section{Command-line arguments}
+\textbf{Execution mode}:
+\begin{center}
+\begin{tabular}{|l|p{.45\textwidth}|}
+\hline
+\p{-r} & Random simulation\\\hline
+\p{-i} & Interactive simulation\\\hline
+\p{-g} & Guided simulation\\\hline
+\p{-gN} & Guided simulation using the N'th trail\\\hline\hline
+\p{-s} & Verification of safety\\\hline
+\p{-a} & Verification of acceptance\\\hline
+\p{-f} & Verification with fairness\\\hline\hline
+\p{-b} & LTL to BA translation only\\\hline
+\p{-c} & Compile \prm{} only\\\hline
+\end{tabular}
+\end{center}
+The default is random simulation.
+
+\textbf{Execution limits:}
+Limits are set using the \p{-l} argument, followed by a character
+identifying which limit is being set and the numerical value of the
+limit:
+\begin{center}
+\begin{tabular}{|l|p{.4\textwidth}|r|}
+\hline
+\p{-lhN} & [H]ash slots & 22\\\hline
+\p{-llN} & [L]ocation stack & 3\\\hline
+\p{-lpN} & [P]rogress steps & 1\\\hline
+\p{-lsN} & [S]tate stack & 2\\\hline
+\p{-ltN} & [T]otal steps & 10\\\hline
+\end{tabular}
+\end{center}
+
+The parameter \p{N} is in thousands (except for hash slots) and the defaults are listed in the
+third column. For the stacks, the value is the number of \textbf{stack
+frames} and not the number of \emph{bytes}. \emph{Total steps} is the
+number of steps of a simulation or verification before the execution is
+terminated. For a verification, a progress report can be printed after
+every \emph{progress steps} have been executed if \p{g} is included in
+the display arguments. The hash table is allocated $2^{N}$ slots, where
+$16 \leq N \leq 32$.
+
+\textbf{Additional execution arguments:}
+\begin{center}
+\begin{tabular}{|l|p{.45\textwidth}|}
+\hline
+\p{-h} & Display [h]elp screen\\\hline
+\p{-mN} & Stop after the [m]'th error\\\hline
+\p{-nN} & Seed of ra[n]dom simulation\\\hline
+\p{-o} & Compiler l[o]gs\\\hline
+\p{-t[f]} & Read L[T]L formula\\\hline
+\end{tabular}
+\end{center}
+If \p{-m0} is used, \emph{all} errors are reported
+and numbered trail files are written for each one.
+The default seed is obtained from the clock. The compiler logs are
+written to separate files, not to standard output. If a file name is not
+given with the \p{-t} argument, the file name is constructed as
+described above. There is no space between \p{-t} and the file name.
+
+Accept labels have not yet been implemented, so \p{-t} should be set
+with execution mode \p{-a} or \p{-f}; a warning message will be given if
+this is not done.
+
+\textbf{Display arguments:}\\
+The argument \p{-d} displays all the data.
+Selective display is possible with the argument
+\p{-dX}, where \p{X} is a string of one or more of:
+
+Compile and runtime messages:
+\begin{center}
+\begin{tabular}{|l|p{.45\textwidth}|}
+\hline
+\p{g} & Pro[g]ress messages\\\hline
+\p{p} & [P]rogram transitions and symbols\\\hline
+\p{r} & [R]un-time statistics\\\hline
+\p{v} & [V]ersion and copyright notice\\\hline
+\end{tabular}
+\end{center}
+
+Transitions:
+\begin{center}
+\begin{tabular}{|l|p{.45\textwidth}|}
+\hline
+\p{a} & [A]ll transitions from a state\\\hline
+\p{c} & [C]hosen transition (simulation)\\\hline
+\p{e} & [E]xecutable transitions from a state\\\hline
+\p{l} & [L]ocation stack\\\hline
+\p{t} & [T]rail\\\hline
+\p{y} & B[y]te code\\\hline
+\end{tabular}
+\end{center}
+
+States:
+\begin{center}
+\begin{tabular}{|l|p{.45\textwidth}|}
+\hline
+\p{h} & State [h]ash table\\\hline
+\p{m} & States in a si[m]ulation\\\hline
+\p{s} & [S]tate stack\\\hline
+\p{u} & B[u]ffered channel contents\\\hline
+\end{tabular}
+\end{center}
+
+LTL translation:
+\begin{center}
+\begin{tabular}{|l|p{.45\textwidth}|}
+\hline
+\p{b} & [B]\"{u}chi automaton\\\hline
+\p{n} & [N]odes in the LT tableau\\\hline
+\end{tabular}
+\end{center}
+
+\newpage
+
+\section{The subset of \spn{} that is implemented}
+\subsection*{\prm{} subset}
+The subset of \prm{} currently implemented includes:
+\begin{itemize}
+\item Data types \p{byte}, \p{bit}, \p{bool}, \p{mtype}. Variables. Arrays.
+\item \p{active proctype}, \p{active [N] proctype}
+\item Expressions and assignment statements. \p{assert}.
+\item \p{atomic}.
+\item Guarded commands, labels, \p{break}, \p{skip}, \p{goto}.
+\item \p{printf} with format specifiers \p{\%d}, \p{\%c}, \p{\%e} and an
+optional final \verb+\n+.
+\item Rendezvous and buffered channels. Send, receive and poll
+statements.\\\p{len}, \p{empty}, \p{nempty} \p{full}, \p{nfull}.
+\end{itemize}
+
+The special meaning of labels beginning with \p{end}, \p{accepted}, and
+\p{progress} is not supported; therefore, LTL formulas must be used for
+liveness correctness claims and the valid end-states are only those
+where all processes have terminated.
+
+\subsection*{LTL formulas}
+The syntax for LTL formulas is not precisely the same as in \spn{}.
+Atomic propositions must start with a lower-case character and must not
+contain the upper-case characters \p{'U'} and \p{'V'}. Defined atomic
+propositions such as \verb+#define mutex (critical<=1)+ cannot be used
+because there is no preprocessor. As a workaround, expressions can be
+enclosed within delimiters: \verb+![]#(critical<=1)#+.
+
+\subsection*{Size limits}
+Limits on the size of the \prm{} models are compiled into \prg{} in
+three package specifications: \p{Global} for basic declarations,
+\p{Config} for table sizes and \p{Config\_State} for the size of the
+compressed state vectors in the stack and hash table:
+%(Table~\ref{tab.size}).
+%\begin{table}[htbp]
+\begin{center}
+\begin{tabular}{|l|l|l|}\hline
+\multicolumn{3}{|c|}{Declarations in package \p{Global}}\\\hline
+Identifier & Type & Meaning\\\hline\hline
+\p{Byte} & \p{mod 256} & Values and indices\\\hline
+\p{Name} & \p{String(1..64)} & Names and source statements\\\hline
+\multicolumn{3}{c}{}\\\hline
+\multicolumn{3}{|c|}{Declarations in package \p{Config}}\\\hline
+Identifier & Type & Meaning\\\hline\hline
+\p{Process\_Index} & \p{Byte range 0..7} & Processes\\\hline
+\p{Symbol\_Index} & \p{Byte range 0..31} & Symbols\\\hline
+\p{Message\_Index} & \p{Byte range 0..3} & Elements in a channel message\\\hline
+\p{Channel\_Index} & \p{Byte range 1..8} & Channels\\\hline
+\p{Data\_Index} & \p{Byte range 0..31} & Bytes of data in a state\\\hline
+\p{Transition\_Index} & \p{Byte range 0..127} & Transitions in a process\\\hline
+\p{Location\_Index} & \p{Byte range 0..7} & Transitions from any state\\\hline
+\p{Byte\_Code\_Index} & \p{Byte range 0..63} & Byte codes per statement\\\hline
+\p{Interpret\_Index} & \p{Byte range 0..63} & Interpretation stack\\\hline
+\p{Max\_Futures} & \p{constant := 4} & Number of future formulas\\\hline
+\multicolumn{3}{c}{}\\\hline
+\multicolumn{3}{|c|}{Declarations in package \p{Config\_State}}\\\hline
+Identifier & Type & Meaning\\\hline\hline
+\p{Process\_Size\_Index} & \p{Byte range 0..3} & Size of processes in a state vector\\\hline
+\p{Variable\_Size\_Index} & \p{Byte range 0..15} & Size of variables in a state vector\\\hline
+\end{tabular}
+%\caption{Size limits}\label{tab.size}
+\end{center}
+%\end{table}
+These limits are sufficient to verify the program in the examples
+directory. The declaration of the size of the compressed state vector is
+in a separate package \p{Config\_State} to enable a future
+implementation of per-model verifiers with minimal recompilation.
+
+\section{Simulation}
+When a \prm{} model is simulated, there will usually be more than one
+\emph{executable} transition in each state. The choice of which
+transition to take can be \emph{random}, \emph{interactive}, or
+\emph{guided} by the \emph{trail file} that is written during a
+verification.
+
+\section{Verification}
+There are three modes of verification in \prg{}:
+\begin{description}
+\item[Safety] Checks safety properties;
+\item[Acceptance] Checks for acceptance cycles;
+\item[Fairness] Checks for acceptance cycles under weak fairness.
+\end{description}
+A correctness property can be specified by a formula in \emph{linear
+temporal logic (LTL)}.
+
+\section{Display format}
+
+Data is displayed in a uniform format: a single line of named
+associations, each of which is terminated with a comma. This format is
+verbose, but easy to read and easy to parse. In the following
+description, the display option needed to obtain each item is given in
+parentheses and extra lines have been used to fit the page.
+
+\subsection{Data structure display}
+
+The display begins with a title line (\p{v}) and a line
+with the parameters of the execution (\p{r}):
+
+\begin{footnotesize}
+\begin{verbatim}
+Erigone v1.0.0, Copyright 2008-9 by Moti Ben-Ari, GNU GPL.
+execution mode=simulation,simulation mode=random,seed=-1,total steps=10,
+\end{verbatim}
+\end{footnotesize}
+
+The symbol table (\p{p}) includes the offset into the state vector of
+each variable and the byte code (\p{y}) for initialization:
+
+\begin{footnotesize}
+\begin{verbatim}
+symbol table start=,
+variables=6,
+type=byte_type,name=n,offset=0,scope=global_scope,
+  byte code={iconst 0 0,byte_store 0 0,},
+type=byte_type,name=finished,offset=1,scope=global_scope,
+  byte code={iconst 0 0,byte_store 1 0,},
+type=byte_type,name=P.i,offset=2,scope=local_scope,
+  byte code={iconst 1 0,byte_store 2 0,},
+type=byte_type,name=P.temp,offset=3,scope=local_scope,
+  byte code={iconst 0 0,byte_store 3 0,},
+type=byte_type,name=Q.i,offset=4,scope=local_scope,
+  byte code={iconst 1 0,byte_store 4 0,},
+type=byte_type,name=Q.temp,offset=5,scope=local_scope,
+  byte code={iconst 0 0,byte_store 5 0,},
+symbol table end=,
+\end{verbatim}
+\end{footnotesize}
+
+Tables of numeric and string constants (if any) are displayed (\p{p});
+the table of numberic constants is used to insert immediate operands into load
+constant instructions \p{iconst}.
+
+For each transition, the following data is displayed (\p{p}): the source
+and target state, various flags, the source code and the byte code
+(\p{y}):
+
+\begin{footnotesize}
+\begin{verbatim}
+transitions start=,
+processes=3,
+process=P,initial=1,transitions=7,
+number=0,source=1,target=3,atomic=0,end=0,accept=0,line=7,
+  statement={(i> 10)},byte code={byte_load 2 0,iconst 10 0,icmpgt 0 0,},
+number=1,source=1,target=4,atomic=0,end=0,accept=0,line=8,
+  statement={else},byte code={logic_else 0 0,},
+number=2,source=3,target=9,atomic=0,end=0,accept=0,line=13,
+  statement={finished++},byte code={iinc 1 1,},
+number=3,source=4,target=5,atomic=0,end=0,accept=0,line=9,
+  statement={temp=n},byte code={byte_load 0 0,byte_store 3 0,},
+number=4,source=5,target=6,atomic=0,end=0,accept=0,line=10,
+  statement={n=temp+ 1},byte code={byte_load 3 0,iconst 1 0,iadd 0 0,byte_store 0 0,},
+number=5,source=6,target=1,atomic=0,end=0,accept=0,line=11,
+  statement={i++},byte code={iinc 2 1,},
+number=6,source=9,target=0,atomic=0,end=1,accept=0,line=0,
+  statement={},byte code={halt 0 0,},
+process=Q,initial=1,transitions=7,
+  ...
+process=Finish,initial=1,transitions=3,
+  ...
+transitions end=,
+\end{verbatim}
+\end{footnotesize}
+
+\subsection{LTL translation display}
+The display of the translation of the LTL formula to a B\"{u}chi
+automaton (BA) is done before that of the transitions of the processes,
+because the transitions of the BA are added to the transition table as a
+never claim.The display starts with the LTL formula together with the
+formula obtained by pushing negation inward (\p{b}). This is followed by
+the nodes of the tableau (\p{n}):
+
+\enlargethispage{\baselineskip}
+
+\begin{footnotesize}
+\begin{verbatim}
+ltl formula=![]<>csp,
+push negation=<>[]!csp,
+nodes start=,
+expanding=,node=1,incoming={0,},new={<>[]!csp,},old=,next=,with set=,
+expanding=,node=2,incoming={0,},new={[]!csp,},old={<>[]!csp,},next=,with set=,
+expanding=,node=4,incoming={0,},new={!csp,},old={[]!csp,<>[]!csp,},next={[]!csp,},with set=,
+expanding=,node=4,incoming={0,},new=,old={!csp,[]!csp,<>[]!csp,},next={[]!csp,},with set=,
+expanding=,node=5,incoming={4,},new={[]!csp,},old=,next=,with set={4,},
+expanding=,node=6,incoming={4,},new={!csp,},old={[]!csp,},next={[]!csp,},with set={4,},
+expanding=,node=6,incoming={4,},new=,old={!csp,[]!csp,},next={[]!csp,},with set={4,},
+  ...
+exists=,node=6,new incoming={4,6,},
+  ...
+nodes end=,
+\end{verbatim}
+\end{footnotesize}
+
+A BA is extracted from the tableau (\p{b}) and optimized:
+
+\begin{footnotesize}
+\begin{verbatim}
+optimized buchi automaton start=,
+source=0,target=0,atomic=0,end=0,accept=0,line=0,statement={1},
+  byte code={iconst 1 0,},
+source=0,target=4,atomic=0,end=0,accept=0,line=0,statement={!csp},
+  byte code={bit_load 3 0,logic_not 0 0,},
+source=4,target=4,atomic=0,end=0,accept=1,line=0,statement={!csp},
+  byte code={bit_load 3 0,logic_not 0 0,},
+optimized buchi automaton end=,
+\end{verbatim}
+\end{footnotesize}
+
+The BA is used to create a never claim process in the transition table
+(\p{p}). In addition, the set of accept states is identified to make
+them easier to find.
+
+\subsection{Display of a simulation}
+A simulation begins from an initial state (\p{m}):
+
+\begin{footnotesize}
+\begin{verbatim}
+initial state=,P=1,Q=1,R=1,n=0,finish=0,P.temp=0,Q.temp=0,
+initial state=,P=1,Q=1,Finish=1,n=0,finished=0,P.i=1,P.temp=0,Q.i=1,Q.temp=0,
+\end{verbatim}
+\end{footnotesize}
+
+For each step of the simulation, the display can contain the set of all
+transitions from the state (\p{a}), the set of executable transitions
+(\p{e}), the chosen transition (\p{c}) and the next state in the
+simulation (\p{m}):
+
+\begin{footnotesize}
+\begin{verbatim}
+all transitions=5,
+process=P,source=1,target=3,atomic=0,end=0,accept=0,line=7,
+  statement={(i> 10)},byte code={byte_load 2 0,iconst 10 0,icmpgt 0 0,},
+process=P,source=1,target=4,atomic=0,end=0,accept=0,line=8,
+  statement={else}, byte code={logic_else 0 0,},
+process=Q,source=1,target=3,atomic=0,end=0,accept=0,line=19,
+  statement={(i> 10)},byte code={byte_load 4 0,iconst 10 0,icmpgt 0 0,},
+process=Q,source=1,target=4,atomic=0,end=0,accept=0,line=20,
+  statement={else},byte code={logic_else 0 0,},
+process=Finish,source=1,target=2,atomic=0,end=0,accept=0,line=29,
+  statement={finished== 2},byte code={byte_load 1 0,iconst 2 0,icmpeq 0 0,},
+
+executable transitions=2,
+process=P,source=1,target=4,atomic=0,end=0,accept=0,line=8,
+  statement={else},byte code={logic_else 0 0,},
+process=Q,source=1,target=4,atomic=0,end=0,accept=0,line=20,
+  statement={else},byte code={logic_else 0 0,},
+
+chosen transition=,
+process=Q,source=1,target=4,atomic=0,end=0,accept=0,line=20,
+  statement={else},byte code={logic_else 0 0,},
+
+next state=,P=1,Q=4,Finish=1,n=0,finished=0,P.i=1,P.temp=0,Q.i=1,Q.temp=0,
+\end{verbatim}
+\end{footnotesize}
+
+To display the data in buffered channels use \p{-u}.
+The first field is the current number of messages in the channel;
+this followed by the messages themselves in brackets:
+
+\begin{footnotesize}
+\begin{verbatim}
+next state=,Pinit=3,ch1=1,a=0,b=0,c=0,channel1={2,[1,2,3,],[4,5,6,],},
+\end{verbatim}
+\end{footnotesize}
+
+The simulation can terminated by an assertion violation, or a valid or
+invalid end state, or by exceeding the total steps allowed:
+
+\begin{footnotesize}
+\begin{verbatim}
+simulation terminated=valid end state,
+\end{verbatim}
+\end{footnotesize}
+
+The runtime statistics are then displayed (\p{r}):
+
+\begin{footnotesize}
+\begin{verbatim}
+steps=87,
+times=,compilation=0.33,simulation=0.18,
+\end{verbatim}
+\end{footnotesize}
+
+\subsection{Display of a verification}
+During a verification, the set of all transitions (\p{a}) and executable
+transitions (\p{e}) is displayed as for a simulation. Operations on the
+stacks can be displayed, both for the state stack (\p{s}):
+
+\begin{footnotesize}
+\begin{verbatim}
+push state=10,p=6,q=6,wantp=1,wantq=1,critical=0,
+  ...
+top state=10,p=6,q=6,wantp=1,wantq=1,critical=0,
+  ...
+pop state=10,reason=no_more_transitions,
+\end{verbatim}
+\end{footnotesize}
+
+and for the location stack (\p{l}):
+
+\begin{footnotesize}
+\begin{verbatim}
+push transition=16,process=0,transition=5,never=0,visited=false,last=false,
+  ...
+top transition=16,process=0,transition=5,never=0,visited=true,last=false,
+  ...
+pop transition=16,
+\end{verbatim}
+\end{footnotesize}
+
+An attempt is made to insert each new state into the hash table (\p{h});
+it may succeed or fail:
+
+\begin{footnotesize}
+\begin{verbatim}
+inserted=true,p=5,q=3,wantp=1,wantq=1,critical=1,
+  ...
+inserted=false,p=6,q=3,wantp=1,wantq=1,critical=0,
+\end{verbatim}
+\end{footnotesize}
+
+For verification with acceptance, the inner flag will be displayed
+indicating if the state is part of the outer or inner search; if the
+verification includes fairness, the fairness counter is included,
+and the ``seed'' state is also displayed:
+
+\begin{footnotesize}
+\begin{verbatim}
+seed=,p=4,q=13,:never:=4,wantp=1,wantq=1,turn=2,csp=0,inner=1,fair=3,
+  ...
+inserted=true,p=14,q=11,:never:=4,wantp=1,wantq=1,turn=2,csp=1,inner=1,fair=1,
+\end{verbatim}
+\end{footnotesize}
+
+The outcome and the runtime statistics (\p{r}) are
+displayed at the end of a verification:
+
+\begin{footnotesize}
+\begin{verbatim}
+verification terminated=never claim terminated,
+steps=47,
+state stack elements=9,element size=22,memory=198,
+transition stack elements=14,element size=5,memory=70,
+states stored=19,matched=9,total=28,element size=22,memory=418,
+times=,compilation=0.03,verification=0.09,
+\end{verbatim}
+\end{footnotesize}
+
+Progress messages can be displayed during a long verification (\p{g}).
+
+\section{The \trc{} program}\label{s.trace}
+
+The \trc{} program performs string processing on the output data written
+by \prg{}. It prints the output of a simulation in tabular form. First
+execute:
+\begin{verbatim}
+erigone -dcmp filename > filename.trc
+\end{verbatim}
+to write a file with the symbol table, states and transitions
+taken. Then execute:
+\begin{verbatim}
+trace [arguments] filename
+\end{verbatim}
+The arguments are:
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\p{-tn} & Number of lines between column [t]itles\\\hline\hline
+\p{-ln} & Column width for [l]ine numbers\\\hline
+\p{-pn} & Column width for [p]rocesses\\\hline
+\p{-sn} & Column width for [s]tatements\\\hline
+\p{-vn} & Column width for [v]ariables\\\hline\hline
+\p{-xs} & E[x]clude variables with \p{s}\\\hline
+\p{-ms} & Exclude state[m]ents with \p{s}\\\hline
+\end{tabular}
+\end{center}
+Here is an example of the output of this program:
+\begin{footnotesize}
+\begin{verbatim}
+Trace v1.00, Copyright 2008-9 by Moti Ben-Ari, GNU GPL.
+Proc Line Statement        wantp  wantq  critic 
+                           0      0      0      
+p    7    {!wantq}         0      0      0      
+q    19   {!wantp}         0      0      0      
+q    20   {wantq=true}     0      1      0      
+p    8    {wantp=true}     1      1      0      
+q    21   {critical++}     1      1      1      
+p    9    {critical++}     1      1      2      
+p    10   {assert(critical 1      1      2      
+simulation terminated=assert statement is false,
+\end{verbatim}
+\end{footnotesize}
+
+The \p{-x} and \p{-m} arguments are used for filtering the output.
+The strings \p{s} are lists of strings terminated by \p{\#}:
+\begin{verbatim}
+-xwant# -massert#!#
+\end{verbatim}
+
+The meaning is that a column for a \emph{variable} (\p{-x}) or a row for
+a \emph{statement} (\p{-m}) will not be printed if one of those strings
+appears within the variable or statement, respectively. With the above
+arguments, the columns for \p{wantp} and \p{wantq} will not be printed,
+nor will the rows with the \p{assert} statements or the negation
+operator.
+
+To build \trc{} with \gnat{}, run:
+\begin{verbatim}
+gnatmake -gnat05 trace.adb
+\end{verbatim}
+
+\newpage
+
+\begin{center}
+\textbf{\Large Software structure}
+\end{center}
+
+\setcounter{section}{0}
+
+\section{Directories}
+\prg{} is a single program written in \ada{}. The main procedure is
+\p{Erigone} in the source file \p{erigone.adb} contained directly in the
+directory \p{src}. This directory also contains the package \p{Version} with
+the copyright notice and the version number. The other source files are
+organized in subdirectories:
+\begin{itemize}
+\item \p{compile}: The \prm{} compiler;
+\item \p{data}: Data structures, including states, symbols, transitions, stacks, hash
+table;
+\item \p{execute}: Execution of the algorithms for simulation and
+verification;
+\item \p{general}: General code for IO, command-line arguments,
+and configuration;
+\item \p{ltl}: Translation of LTL formulas to B\"{u}chi automata.
+\end{itemize}
+
+Library-level variables are not initialized when they are declared, but
+only in explicit initialization subprograms. This enables the program
+to be run repeatedly---perhaps from a development environment---without
+reloading. (This has not yet been implemented for the compiler.)
+
+\section{Global and configuration data}
+
+Global declarations are in package \p{Global}. All values and indices
+are of type \p{Byte} (an 8-bit byte) so this places a natural limitation
+on the number transitions, etc. The constant \p{None} is declared as the
+last value of \p{Byte} and should not be used otherwise. Each identifier
+is of the string subtype \p{Name} and is padded with blanks. The type
+\p{Byte\_Array\_Base} is an array of \p{Byte}, indexed by \p{Byte}, that
+is used for storing most data. The array is unconstrained to allow
+components that are smaller arrays; the subtype \p{Byte\_Array} is
+constrained to the full range of the index \p{Byte}.
+
+The configuration data are described in the user's guide. Package
+\p{Config} defines subtypes of \p{Byte} that are used as indices of
+arrays storing data and can be changed to compile and execute larger
+programs. Package \p{Config\_State} defines subtypes of \p{Byte} that
+are used to constrain the size of a compressed state vector on the stack
+and in the hash table (see \p{Compress\_Vectors}). They are declared in
+a package separate from \p{Config} so that changing them will have a
+minimal impact on the necessary recompilation. These constants are
+compiled into \prg{}, though a future modication could compute them from
+a \prm{} program as in \spn{}.
+
+\section{Packages in the general subdirectory}
+\begin{itemize}
+\item \p{Byte\_IO} is an instantiation of
+\p{Ada.Text\_IO.Modular\_IO} for bytes.
+\item File extensions and a pointer to the file name are declared in \p{Files}.
+\item \p{Random\_Numbers} constains an instantiation of
+\p{Ada.Numerics.Float\_Random} and a function that converts these values to values of
+type \p{Byte}.
+\item Package \p{Options} contains the declarations of run-time options
+such as the modes for \prg{}, the stack sizes and the flags controlling
+what data is displayed.
+\item The values of the options are set in \p{Arguments} which parses
+the command line.
+\item Package \p{Times} stores the start time and the times when the
+compilation and execution have finished; these are displayed
+by calling \p{Print\_Times}.
+\item Package \p{Utilities} contains subprograms that perform string and
+IO processing.
+\end{itemize}
+
+\section{Static data structures}
+
+\subsection{Symbol table}
+
+Package \p{Symbol\_Tables} stores the symbol table that is obtaining by
+parsing data in the automata file produced by the compiler (subprogram
+\p{Read}). A symbol consists of an identifier, its type and scope, the
+offset in a state vector of its value, and the byte code needed to
+initialize the variable.
+
+This package exports the global variable \p{Variables} which stores the
+number of variables in the \prm{} program. Within its body are tables
+for numbers, strings and \p{mtype} names. The number table is used to
+insert immediate operands in the \p{iconst} instructions in the byte
+code (\p{Fix\_Load\_Constant}).
+
+The channel data stores data for each channel and the global variable
+\p{Channels} is exported. As in \spn{} the channels are numbered from 1,
+not 0. Note the difference between a channel and a channel variable. In
+the declaration:
+
+\begin{footnotesize}
+\begin{verbatim}
+chan ch = [2] of { byte, byte, byte };
+\end{verbatim}
+\end{footnotesize}
+\p{ch} is a channel variable that is just a byte holding the handle
+(index) of the channel defined by the initializer. Channel variables can
+be assigned to, so the association of variables with channels can change
+at runtime. Buffered channels are allocated space in the state vectors,
+but rendezvous channels do not take up space in the vectors.
+
+\p{Get\_Variable\_Names} returns an array of the variable names and is
+used when displaying a state. \p{Get\_Variable\_Initials} returns a vector
+of the initial values after evaluating the initializing expressions.
+
+When \p{active[N] proctype P()} is used, \p{Replicate\_Local\_Symbols} is
+called to make $N-1$ copies of each local variable in this process. The
+suffix \p{\_1} is added to the original symbol and \p{\_2}, \p{\_3} and
+so on are added to the other copies.
+
+Since the new copies of the local variables will be at different offsets
+in the state vector, the initialization byte code must be fixed up in
+the copies. This is done by creating a table \p{Byte\_Fix\_Array} whose
+entries are triples: the number of the copy, the old offset and the new
+offset. For example, if the first copy of byte variable \p{n} is at
+offset 2 and the last (free) offset in the state vector is 7, the
+next two copies will have entries: (2, 2, 7), (3, 2, 8). The procedure
+\p{Fix\_Addresses} is called with the byte code for each new copy;
+it scans the byte code for appropriate entries in the table and fixes
+them. For example, \p{byte\_load 2 0} will become \p{byte\_load 7 0} in
+copy 2 and \p{byte\_load 8 0} in copy 3.
+
+\subsection{Automata}
+
+Package \p{Automata} stores a data structure for the transitions, as
+well as data structures for \emph{locations}, which are the possible
+transitions from the set of location counters in a state.
+
+Since the package is quite large, the subprograms for displaying
+transitions and locations are placed in a child package
+\p{Automata.Display}.
+
+\subsubsection*{Declarations in the visible part}
+
+The types declared in the package specification are:
+\begin{itemize}
+\item \p{Byte\_Code} is a record containing the opcode and operands.
+\item \p{Byte\_Code\_Array} is an array of byte codes.
+\item \p{Transitions} is a record containing the data for transitions:
+source state, target state, the source code statement and its line
+number, flags (atomic, end label and accept), and an array of byte codes
+and the number of byte codes in the array.
+Since transitions are frequently copied, for efficiency the two large
+components (the statement name and the array of byte codes) are
+allocated and access values used instead.
+\item \p{Location\_Type} is a record with two components: a \p{Process}
+index and an index of a \p{Transition} in the process.
+\item \p{Location\_Record} is a record that stores sets of locations;
+its components are:
+\begin{itemize}
+\item The locations are stored in \p{Location\_Array} of
+\p{Location\_Array\_Type} whose components are of \p{Location\_Type};
+\item A \p{Count} of the locations in the array;
+\item \p{Never\_Index} is the index within \p{Location\_Array} of the
+first transition of a never claim (counting from zero), or \p{None} is a
+never claim is not used.
+\end{itemize}
+For example, if process \p{P} contains two transitions for its location,
+process \p{Q} contains one transition, and the never claim has two
+transitions. If both transitions for \p{P} and both transitions
+for the never claim have the same source state, then
+\p{Get\_All\_Locations} (see below) will return a \p{Location\_Record}
+with:
+\begin{verbatim}
+Count            5
+Never_Index      3
+Location_Array
+Process    Transition
+   0           0
+   0           1
+   1           0
+   2           0
+   2           1
+\end{verbatim}
+\end{itemize}
+
+There are two global variables:
+\begin{itemize}
+\item \p{Processes} is the number of processes in the program;
+\item \p{Never} is the index of the never claim within the processes.
+\end{itemize}
+For example, if there are two processes and a never claim, then
+\p{Processes} will be 3 and \p{Never} will be 2 (counting from zero).
+
+The transitions are sorted with the source state as the primary key and
+the target state as the secondary key, except that a transition
+corresponding to \p{else} is always placed last.
+
+For verification with fairness, a null transition is added to each
+process; see Section~\ref{s.fair} for an explanation.
+
+\subsubsection*{Declarations in the private part}
+
+The following declarations are in the private part (so that the child
+package can access them). The transitions are stored in an array
+\p{Program} with one component of type \p{Process\_Type} for each
+process. The components of this record type are:
+\begin{itemize}
+\item \p{Identifier} is the name of the process;
+\item \p{Transition\_List} is an array of transitions for this process;
+\item \p{Initial\_State} is the initial state of the process;
+\item \p{Count} is the number of transitions in the process.
+\end{itemize}
+
+To facilitate locating accepting states (states appearing as source
+states of transitions marked with the accept flag), a separate array
+\p{Accept\_Table} whose components are pairs of (\p{Process}, \p{State})
+is maintained. Currenly, this would not really be necessary since accept
+labels are not implemented and thus accept states occur only in never
+claims.
+
+\subsubsection*{Subprograms}
+
+The most important subprogram declared in the package is:
+
+\begin{footnotesize}
+\begin{verbatim}
+  function Get_All_Locations(S: State_Vectors.State_Vector) return Location_Record;
+\end{verbatim}
+\end{footnotesize}
+
+The function returns all transitions whose source state is the state
+of a location counter of a process in the state vector \p{S}. For example,
+in Dekker's algorithm the statement:
+
+\begin{footnotesize}
+\begin{verbatim}
+    if
+    :: (turn == 1)
+    :: (turn == 2) -> ...
+    fi
+\end{verbatim}
+\end{footnotesize}
+
+gives rise to two transitions:
+
+\begin{footnotesize}
+\begin{verbatim}
+number=4,source=11,target=13,atomic=0,end=0,accept=0,line=13,statement=,
+  byte code=byte_load 2 0,iconst 1 0,icmpeq 0 0,
+number=5,source=11,target=7,atomic=0,end=0,accept=0,line=14,statement=,
+  byte code=byte_load 2 0,iconst 2 0,icmpeq 0 0,
+\end{verbatim}
+\end{footnotesize}
+in each of the two processes. In a state where both processes are at
+state 11, there will be four \emph{locations}, one for each of the two
+transitions in each of the two process. Of course, only one location in each
+process will be \emph{executable}. During simulation, one must be
+\emph{chosen}, while during verification, both must be pushed on the
+location stack so that the search can check both possibilities.
+
+The function \p{Get\_All\_Locations} is in this package because it is
+purely structural and does not depend on the runtime state; compare this
+with \p{Get\_Executable\_Transitions} which does depend on the state and
+thus can be found in the package \p{Execute}. Similarly,
+\p{Remove\_Transition} performs the purely structural task of removing a
+transition from a value of \p{Location\_Record} given an index. The
+function \p{Get\_All\_Locations} can raise an exception if there are
+more transitions than allowed by \p{Global.Location\_Index}.
+
+Subprogram \p{Translate\_LTL} calls \p{LTL.LTL\_To\_Automaton} to
+translate the LTL formula into a BA. The transitions of the BA are then
+added as an additional process in \p{Program}.
+
+\subsubsection*{Reading the automata file}
+The ``object code'' produced by the compiler is in a form similar to
+that of the output of \prg{}, except that it is not nicely ordered. The
+file is parsed by procedure \p{Read}. Procedure \p{Extract\_Byte\_Code}
+parses a string containing a sequence of byte codes and is exported for
+parsing expressions for symbol initialization and BA transitions.
+\p{Fix\_Load\_Constant} sets immediate operands in the \p{iconst}
+instructions.
+
+When \p{active[N] proctype P()} is used, the automata file contains the
+number \p{N} for the process \p{P} and procedure \p{Active\_Proctypes}
+is called. The transitions for this process are considered to be those
+for the first copy, so $N-1$ new processes are created and the set of
+transitions copied. The name of the first copy is changed to \p{P\_1}
+and the copies are named \p{P\_2}, \p{P\_3} and so on.
+\p{Symbol\_Tables.Fix\_Addresses} is called to fix up the addressing of
+local variables, as explained above.
+
+\section{Runtime data structures}
+
+\subsection{State vectors}
+Package \p{State\_Vectors} declares the type \p{State\_Vector} with four
+components:
+\begin{itemize}
+\item \p{Process} is an array whose compoments are the current location
+counters of the processes;
+\item \p{Variable} is an array whose compoments are the current values of
+the variables, as well as the contents of buffered channels;
+\item \p{Inner} is a flag that is true for states in a nested search for
+an acceptance cycle (this is called \p{toggle} on pp.~179--181 of
+\smc{}).
+\item \p{Fair} is a byte that stores the copy of the state when checking fairness.
+\end{itemize}
+The byte arrays of the type \p{State\_Vector} are of the constrained
+subtype \p{Byte\_Array} with 256 components.
+
+\subsection{Compressed vectors}
+
+For storing state vectors on the stack and in the hash table,
+\emph{compressed} state vectors are used, where the corresponding arrays
+\p{Process} and \p{Variables} are declared with index subtypes
+\p{Process\_Index} and \p{Variable\_Index} from package
+\p{Config\_State}. Functions to \p{Compress} and \p{Expand} state
+vectors are provided.
+
+Type \p{Compressed\_Vector} is declared as \emph{private} in package
+\p{Compress\_Vectors}. This ensures that very few packages in \prg{} are
+semantically dependent on \p{Config\_State}.
+
+\subsection{Stacks}
+There are two stacks: \p{State\_Stack} for the state vectors and
+\p{Location\_Stack} for the transitions to be tried in the depth-first
+search. (The pseudocode in Chapter~8 of \smc{} uses
+recursion instead of a location stack.) The stacks themselves are arrays
+that are allocated at run-time so that their sizes can be given as
+command-line arguments. Both stack packages record their maximum size
+for displaying runtime statistics.
+
+Since the state stack is declared in the package body of
+\p{State\_Stack}, units that are dependent on the specification of the
+package need not be recompiled if the compressed state vectors are
+modified.
+
+The function \p{On\_Stack} is used when verifying acceptance to see if a
+state exists on the stack (Section~\ref{s.accept}).
+
+The location stack stores values of type \p{Location\_Item} with
+components:
+\begin{itemize}
+\item \p{L} of type \p{Location\_Type} (the \p{Process} and
+\p{Transition} indices of the location);
+\item \p{Never} is the current location within the never claim (see the discussion
+of the synchronous product in Section~\ref{s.verif});
+\item \p{Visited} is a flag that is set to true when a location has been
+used in the depth-first search. Locations that have been visited define
+the trail which is written to a file by \p{Put\_Trail} if a verification
+fails;
+\item The flag \p{Last} is set to true when the last location from a
+state has been tried.
+\end{itemize}
+
+\subsection{Hash table}
+
+Package \p{Hash\_Tables} uses an array of access types to linked lists
+of buckets that store (compressed) state vectors. The hash function used
+is FNV 1a, because it is easy to implement and efficient. See the
+Wikipedia page for \emph{Fowler-Noll-Vo hash function}, or the
+webpage \url{http://isthe.com/chongo/tech/comp/fnv/}.
+
+The hash table is an access to an array whose index is a modular type,
+constrained to a power-of-2 subrange of \p{2**32}. Since an access value
+is used, the hash table can be allocated at run time, according to the
+argument \p{-lhN}.
+
+The procedure \p{Put\_State} returns a Boolean flag \p{Inserted} to
+indicate if the state was inserted into the set or not (because it was
+already there). The package maintains counts of the number of states
+stored and matched, as well as a count of the numbe of collisions
+encountered when hashing.
+
+Since the package needs to access the full type declaration of
+\p{Compressed\_Vector}, it is a child package of \p{Compress\_Vectors}.
+An additional package, also called \p{Hash\_Tables} is declared at the
+library level and simply renames the subprograms of the child package.
+This is done so that the verification algorithms are not dependent on
+the representation of the compressed state vectors.
+
+\section{Execution of the model checking}
+
+Package \p{Execute} is the parent of all the packages that perform the
+simulation and verification. Its only public declaration is the
+procedure \p{Run} which calls the single public declaration of either
+either \p{Execute.Simulate} or \p{Execute.Verify}.
+The global variables declared in the private part are:
+\begin{itemize}
+\item \p{Atomic} is set to the index of a process that is
+executing an atomic statement. (This is the variable \p{exclusive} in
+\smc{}, pp.~160--161.);
+\item \p{Current} holds the current state of the simulation or
+verification;
+\item \p{L\_Rec} of type \p{Automata.Location\_Record} is used
+to store the set of locations (transitions) from the current state;
+\item \p{End\_State} of type \p{End\_Type} is used to return the end state:
+valid, invalid or termination of the never claim.
+\item \p{Handshake} holds the current channel index when executing a
+rendezvous. (See \smc{}, pp.~555-556.)
+\end{itemize}
+The package body contains step counters that are incremented as each
+transition is simulated or as each transition is taken during a
+verification.
+
+Procedure \p{Get\_Executable\_Transitions} returns a set of locations
+that are executable in the current state. First, the set of all
+locations whose source is in the current state is obtained from
+\p{Get\_All\_Locations} in package \p{Automata}. Then, non-executable
+transitions are removed by considering:
+
+\begin{itemize}
+
+\item The values of the variables in the state that might make a
+transition non-executable, in which case it is removed.
+
+\item For a buffered channel, a send statement is not executable if the
+channel is full and a receive statement is not executable if the channel
+is empty. For receive statements which have an argument that is not a
+variable, the state vector is copied to a temporary varible and
+\p{Evaluate} is called. \p{Evaluate} interprets the byte code for
+loading constants and evaluating expressions (within \p{eval}), and the
+receive instruction is executed, although it just modifies the temporary
+state vector.
+
+\item For a rendezvous channel, if \p{Handshake} is zero, a rendezvous
+is \emph{not} in progress. If that is the case, send is executable
+(provided that there is a receive statement for the same channel), and,
+when it is executed, it sets \p{Handshake} to its channel index. If
+\p{Handshake} is non-zero, \emph{no} statement is executable, except for
+receive statements on that channel. When executed, the receive statement
+then resets \p{Handshake} to zero. This method of implementing rendezvous
+is described on pp.~158--160 and~555--556 of \smc{}.
+
+\item If \p{Atomic} contains the index of a process and if there are
+executable transitions for that process, all other transitions must be
+removed.
+
+\item An \p{else} transition may be taken only if no other transitions
+for its process are executable; if not, the \p{else} transition is
+removed.
+
+\end{itemize}
+The procedure also checks the end-state status: if there are no
+executable transitions, the end state is valid if and only if the all
+locations are labeled \p{end}.
+
+Procedure \p{Execute\_At} executes a selected transition in the current
+state by calling the interpreter, while procedure \p{Execute\_Never}
+changes the location of the never claim.
+
+\subsection{Interpreting statements and expressions}
+Package \p{Execute.Statement} is the interpreter for the stack-based
+byte code. It contains the procedure \p{Evaluate} that receives the
+\p{Current} state vector and the byte code to be executed. For a
+statement that stores a value, it updates the state vector. It always
+returns a \p{Result} that can be used to decide if an expression is
+executable.
+
+For a rendezvous channel, when the send instruction is executed it
+copies the message from the stack to an internal buffer
+\p{Message\_Buffer} and sets the variable \p{Handshake} to the channel
+index. The receive statement copies the message from \p{Message\_Buffer}
+to the variables and resets \p{Handshake} to zero.
+
+For a buffered channel, send pops the values of its arguments from the
+stack to an array \p{Message\_Buffer}. From here it is copied to the
+first position in the channel buffer in the state vector for FIFO send;
+for sorted send, a search is made for the correct position to place the
+message.
+
+Receiving a value from a buffered channel is similar if the arguments
+are variables. If not, the value of the argument in the stack must equal
+the value of the corresponding field in a message in the channel buffer.
+This is implemented my creating an array \p{Is\_Variable} of flags with
+an element for each argument; it is built when the arguments of the
+receive instruction are interpreted. An argument is considered to be a
+variable if it is pushed onto the stack by a \p{load\_address}
+instruction; other instructions that push values indicate values. When
+the receive instruction is interpreted, it is now a simple matter to
+check the flags in order to decide whether to copy the message field to
+the variable (unless this is a poll instruction) or to check for
+equality. For FIFO receive, just the first message is checked, while for
+random receive, the same code is executed in a loop for all messages.
+The channel buffer is ``closed up'' to remove the matched message; if a
+matched message is not to be removed (\p{ch?<args>} or \p{ch?[args]}),
+this step is skipped.
+
+\subsection{Byte code instructions}
+Adding a new byte code instruction requires that the following
+modifications be done in the model checker (in addition to whatever
+changes are done in the compiler):
+\begin{itemize}
+\item Write code for interpreting the instruction in an alternative of
+\p{case} statement in procedure \p{Execute.Statement.Evaluate}.
+\item In procedure \p{Execute.Execute\_At}, make the appropriate changes
+to the \p{case} statement that decides whether the statement in which
+the instruction appears needs to change the location counter in the
+\p{Current} state vector. (It will not need to do so if the statement is
+not executable.) The procedure assumes that this decision can
+be made by examining the final instruction of a statement.
+\end{itemize}
+There are some other places where specific instructions are examined:
+\begin{itemize}
+\item In \p{Automata.}\verb+"<"+, the instruction \p{logic\_else} is
+used to order the transitions so that \p{else} statements are the last
+transition for any source state.
+\item In \p{Automata.Fix\_Load\_Constant} and
+\p{Symbol\_Tables.Fix\_Load\_Constant}, \p{iconst} instructions for 
+pushing a constant on the stack are modified so that the constant value
+is an immediate operand. The is done for efficiency so that the number
+table need not be read for this instruction.
+\item When there are multiple instantiations of a \p{proctype} that
+contains local variable, \p{Symbol\_Tables.Fix\_Addresses} fixes
+addresses that refer to these variables so that the correct variable for
+each copy of the process is used.
+\end{itemize}
+
+\section{Simulation}
+Package \p{Execute.Simulate} performs a simulation.
+\p{Get\_Executable\_Transitions} from the parent package \p{Execute} is
+called and one executable transition is chosen according to the options:
+random, interactive or guided. Procedure \p{Execute\_At} is called to
+execute the chosen transition. Exception \p{Termination\_Error} is raised
+when the simulation terminates, either normally in a valid end state, or
+abnormally because of errors like an invalid end state or a false
+assertion. The exception is handled and the reason for the termination
+displayed.
+
+\section{Verification}\label{s.verif}
+Package \p{Execute.Verify} is the parent of two child packages that
+contain the code for verification in safety mode and acceptance mode
+(with or without fairness).
+
+The visible part of the package contains the single subprogram
+\p{Verify}, while the private part contains subprograms that are used in
+both modes of verification.
+
+Function \p{Is\_Accept\_State} returns true if some process is in a
+state that is accepting.
+
+\p{Get\_And\_Push\_Transactions} calls \p{Get\_Executable\_Transactions}
+from the parent package. If: (1) there are no executable transactions,
+or (2) the only executable transactions are from the never claim, or (3)
+the never claim is terminated, then the state stack is popped (after
+checking the end state in safety mode). Otherwise,
+\p{Push\_All\_Transitions} pushes all locations in the location record
+onto the location stack. The last location (which is pushed first) has
+\p{Last} set to true so that we know when to terminate the search in
+this state. All locations have \p{Visited} set to false.
+
+When there is a never claim, the \emph{synchronous product} must be
+pushed: Each executable location of the program is pushed once for each
+executable transition of the claim.
+
+The private part also contains the declaration of the variable
+\p{Unfolded} that is used when verifying with fairness; see
+Section~\ref{s.fair} below.
+
+\subsection{Safety}
+Package \p{Execute.Verify.Safety} performs the verification of safety
+properties. The main loop makes the top of the state stack the current
+state and the top of the location stack the current location. If this
+location has been \p{Visited}, it is popped; if it was the
+\p{Last} location of this set of locations, the state stack can be
+popped. Otherwise, the transition at this location is executed, as is a
+transition of the never claim (if any). An attempt is made to put the
+resulting state into the hash table. If successful (that is, if this is
+a new state), the depth-first search is implemented by pushing the state
+on the state stack and calling \p{Get\_And\_Push\_Transitions}.
+
+\subsection{Acceptance}\label{s.accept}
+
+Package \p{Execute.Verify.Acceptance} performs the verification of
+liveness properties by looking for acceptance cycles. The overall
+structure is similar to that for verification of safety, except that
+when an accepting state is encountered an inner search is commenced.
+
+Consider the the following state diagram:
+
+\begin{center}
+\unitlength=1.2pt
+\begin{picture}(70,100)
+%\put(0,0){\framebox(70,100){}}
+\put(10,0){
+\put(10,10){\circle{20}}
+\put(0,0){\makebox(20,20){\textsf{s3}}}
+\put(10,50){\circle{20}}
+\put(0,40){\makebox(20,20){\textsf{s2}}}
+\put(10,90){\circle{20}}
+\put(0,80){\makebox(20,20){\textsf{s1}}}
+\put(50,50){\circle{20}}
+\put(50,50){\circle{18}}
+\put(40,40){\makebox(20,20){\textsf{s4}}}
+\put(10,80){\vector(0,-1){20}}
+\put(10,40){\vector(0,-1){20}}
+\put(18,83){\vector(1,-1){25}}
+\put(42,43){\vector(-1,-1){25}}
+\put(0,10){\line(-1,0){10}}
+\put(-10,10){\line(0,1){80}}
+\put(-10,90){\vector(1,0){10}}
+}
+\end{picture}
+\end{center}
+
+Suppose that the search begins \textsf{s1} $\rightarrow$ \textsf{s2}
+$\rightarrow$ \textsf{s3}. Now \textsf{s1} has already been visited, so
+the search backtracks and tries \textsf{s4}, an accepting state. The
+next transition is \textsf{s4} $\rightarrow$ \textsf{s3}, but the state
+\textsf{s3} has already been visited so the search terminates, although
+there is an acceptance cycle \textsf{s4} $\rightarrow$ \textsf{s3}
+$\rightarrow$ \textsf{s1} $\rightarrow$ \textsf{s4}.
+
+When an accepting state like \textsf{s4} is encountered, it is pushed on
+the stack with \p{Inner} set to 1 and a new search is begun. Now, the
+states \textsf{s3} and \textsf{s1} \textit{with} \p{Inner} \textit{set
+to 1} have \emph{not} been visited and the acceptance cycle will be
+found. The accepting state from which the inner search is started is
+saved in \p{Seed} and must occur again for an acceptance cycle to exist.
+Alternatively, function \p{On\_Stack} is called to see if a new state
+already exists on the stack; if so, a path to the seed must exist. See
+pp.~179--181 of \smc{} or Section~4.4 of Baer and Katoen for more
+detail.
+
+\subsection{Fairness}\label{s.fair}
+Verification with weak fairness is implemented by \emph{unfolding} the
+state space as described on pp.~181--188 of SMC. Copies of states are
+used to ensure that an acceptance cycle executes a transition of each
+enabled process. The copies are indexed from $0$ to $k+1$, where $k$ is
+the number of processes not counting the never claim; the value $k+1$ is
+stored in the variable \p{Unfolded}. Each state vector has a counter
+\p{Fair} (initialized to $0$) that is used to keep track of which copy
+the state belongs to, and only copy $0$ has accept states.
+
+When an \emph{accepting state} is encountered in copy $0$ of a state,
+the current state becomes copy $1$ of the state; transfer from copy $i$
+to copy $i+1$ occurs whenever a transition of process $i$ is executed.
+The inner search is begun from the $k+1$'st copy. Since all transitions
+from accepting states (in copy $0$) lead out of the copy and since the only
+way of returning to copy $0$ is by traversing all the other copies, an
+accepting cycle must contain transitions from all processes and thus is
+fair.
+
+When checking fairness, null transitions for blocked processes must be
+added when in the unfolded states (p.~183 of \smc{}). A dummy transition
+is created (by \p{Automata.Read}) at the end of the transitions for each
+process (except the never claim); this transition is ignored when
+executing \p{Get\_All\_Locations} in package \p{Automata}.
+\p{Get\_And\_Push\_Transitions} of package \p{Execute.Verify} calls
+procedure \p{Add\_Null\_Transition}, which checks if there are
+executable transitions for the copy associated with the current value of
+the fairness counter (not including the $0$'th and $k+1$'st copies). If
+not, a null transition is constructed by calling
+\p{Set\_Null\_Transition} in package \p{Automata} which sets the source
+and target states to be the current state and returns the transition
+index. The null transition is then added to the list of executable
+transitions before the transitions of the never claim.
+
+\section{Translation of LTL formulas to B\"{u}chi automata}\label{s.ltl}
+The algorithm implemented is from:
+\begin{quote}
+Gerth, R., Peled, D., Vardi, M. Y., and Wolper, P. 1996. Simple
+on-the-fly automatic verification of linear temporal logic. In
+\emph{Proceedings of the Fifteenth IFIP WG6.1 International Symposium on
+Protocol Specification, Testing and Verification XV}, 3-18.
+\end{quote}
+See also Section~4.4 of Kr\"{o}ger and Merz, or Section~5.2 of Baer and
+Katoen.
+
+To make the algorithms easier to follow, the unary temporal operators
+\p{<>} and \p{[]} are directly implemented, rather than being translated
+into \p{U} and \p{V}.
+
+Package \p{LTL} is the parent for a set of \emph{private} packages that
+implement the algorithm. Formulas and nodes are declared in the private
+part of package \p{LTL}, along with sets of formulas and nodes that are
+implemented using \p{Ada.Containers.Ordered\_Sets}.
+
+A formula represented as a string is translated into a tree data
+structure. For unary operators \p{!}, \p{[]} and \p{<>}, the \emph{left}
+subtree is null; this is so that in both forms of future formulas
+(\p{<>q} and \p{pUq}), the subformula to be fulfilled is in the right
+subtree. Sets of formulas are implemented by ordered sets whose
+\p{Element\_Type} is \p{Formula\_Pointer}, a pointer to the tree
+representation of a formula.
+
+The visible part of package \p{LTL} declares a \emph{function}
+\p{LTL\_To\_Automaton} which takes a formula represented as a string as
+a parameter and returns a set of transitions representing the BA. There
+is also a \emph{procedure} of the same name that calls the function and
+discards the set of transitions; it is used when the execution mode is
+\p{-b}, LTL-to-BA translation only. The function first calls
+\p{Push\_Negation} to push negation inwards. Function
+\p{Construct\_Tableau} is called and returns the set of nodes that are
+states. Finally, \p{Convert} is called to convert the states into
+transitions.
+
+Package \p{LTL.Formulas} declares subprograms for LTL
+formulas. There are procedures to display formulas and sets of formulas.
+\p{To\_Formula} translates a string into a formula and
+\p{Get\_Literal} returns the string representation of a literal.
+Function \p{Push\_Negation} returns the formula after pushing negations
+inward and function \p{Contradiction} checks a set of formulas for
+contradictions and returns a Boolean value. Procedure \p{Decompose}
+decomposes a formula according to the rules of LTL:
+one or two subformulas that must be true in the current state, and---for
+the temporal operators---suformulas that must be true in the next state.
+
+Package \p{LTL.Nodes} constructs the tableau as described in the
+article. Each formula in a node is decomposed into its subformulas; when
+no more decomposition is possible, either the node is closed because of
+a contradiction or it is open or a new node must be created because
+there are formulas that must be true in the \p{Next} state. If a new
+node has the same formulas as one that already exists, it is not
+created; instead, the current node is added to the list of \p{Incoming}
+nodes of the existing node.
+
+Package \p{LTL.Automaton} contains the function \p{Convert} to convert
+the states into transitions. The \p{OldF} field of each state contains
+the formulas that must be true in that state. The transitions are
+defined as follows: for every state $s_{i}$ in the \p{Incoming} set of
+state $s$, there is a transition $s_{i}\rightarrow s$. Any literal in
+\p{OldF} of $s$ is a condition of the transition.
+
+The resulting BA is optimized as follows: if there is a set of states
+$s_{1}, s_{2}, \ldots$ such that they all have transitions to the same
+state $t$ and labeled by the same condition, then the set can be collapsed.
+This is performed in procedure \p{Optimize}, which calls
+\p{Remove\_Duplicates} to collapse duplicate transitions that result
+from collapsing the states.
+
+Function \p{Get\_Future\_Formulas} returns the set of all formulas F of
+the form \p{<>q} or \p{pUq}. An accepting state is one such that F is
+not in the state or \p{q} is in the state.
+
+If there is more than one future formula, the BA that results is called
+a \emph{generalized B\"{u}chi} automaton with multiple sets of accepting
+sets, one for each future formula. The generalized BA must be
+\emph{degeneralized} to a BA with one set of accepting states. The
+algorithm, described in Baer and Katoen, pp. 195--196, is implemented in
+procedure \p{Degeneralize}. Copies of the states are made, one for each
+future formula. The only transitions that move between copies are those
+from an accepting state for the $i$'th formula; they have a target in
+the next copy (modulo the number of copies). Only states in the first
+copy retaining their status as accepting. It follows that if there is an
+accepting cycle, it must have traversed all the copies and hence
+accepting states for all future formulas.
+
+\newpage
+
+\section{Compiler}
+\textbf{This section was written by Trishank Karthik Kuppusamy.}
+
+This Section is an overview of the compiler. Further details can be
+found in additional documents that the author will publish later.
+
+There are four major packages in the compiler, each of which
+corresponds to a phase of the compiler: the lexical analyzer
+(\p{Lexer}), the recursive descent parser (\p{Parser}), the abstract
+syntax tree analyzer (\p{AST}) and the code generator (\p{CodeGen}).
+
+Each of these major packages has a corresponding child package where
+their data structures are declared: \p{Types.Lexer}, \p{Types.Parser},
+\p{Types.Ast}, \p{Types.Codegen}; their parent package is \p{Types}. The
+\p{Types} packages make extensive use of the Ada 2005 container library:
+doubly linked lists, hashed maps, vectors and hashed sets. They are used
+for various book-keeping tasks such as managing the list of tokens, the
+map from keywords to tokens, the string table, and the number table.
+
+The \p{Logger} package writes messages to four output files, one for
+each phase of the compiler. The logger is modeled after the standard
+logger of Python with five levels of messages: debug, info, warning, error,
+critical.
+
+\subsection{Lexical analyzer}
+
+The lexer is a 22-state deterministic finite automaton. It analyzes the
+character stream and returns the appropriate token with at least the
+token type. If the token is an identifier, the bounded string cursor has
+a non-null value. If the token is a number, the natural value cursor has
+a non-null value. The lexer uses \emph{variable buffering}: it reads a
+constant number of lines into an unbounded string that has a variable
+number of characters.
+
+The lexer can also be used to compile code represented as a string. This
+is used for compiling the expressions in the B\"uchi automaton as
+described above in Section~\ref{s.ltl}.
+
+\subsection{Recursive descent parser}
+
+An LL(N) recursive descent parser is used. The \emph{First} and
+\emph{Follow} sets for the left-recursion-eliminated and left-factored
+Promela grammar were produced by a program previously developed by the
+author. The lexer and parser can compile the entire Promela grammar,
+except for embedded C code and a few other incompatibilities (such as
+the use of the semicolon as both a separator \emph{and} a terminator,
+and a size specifier for the \p{unsigned} data type); these are not
+documented in the Promela grammar specification but were found in
+\smc{}. Most of the procedures or functions in the parser package
+correspond directly to a Promela construct, and most of the functions
+return a node in the abstract syntax tree.
+
+\subsection{Semantic analyzer}
+
+The main data structures of the semantic analyzer are the nodes of the
+abstract syntax tree; others include book-keeping data structures, such
+as one used to distinguish between built-in data types and user-defined
+types, and one for tracking \p{mtype} enumerated constants for
+``constant folding.''
+
+The semantic analyzer checker the semantic rules of the Promela
+language, for example, that no \p{proctype} has more than 255 instances.
+A common semantic check ensures that certain nodes are not \p{null}.
+Binary expressions are not rigorously type-checked since the Promela
+specification dictates that all arithmetic expressions are ultimately
+computed and stored in an integer, the widest numeric type, and only
+then truncated as necessary to fit the target data type. (The byte code
+specification takes care of this.) Other semantic checks include
+preventing assignments into a \p{mtype} constant, correcting unary
+expressions, and preventing duplicate entries in the same scope.
+
+Some tree nodes are either decorated or rewritten at compile-time. An
+example of the former is that variable nodes are decorated with type
+information. An example of the latter is that binary expressions are
+parsed without taking operator precedence into account; instead, they are
+recursively corrected for that during the semantic analysis.
+
+\subsection{Code generator}
+
+The generator performs two tasks: it outputs a finite state machine for
+each process as represented by a set of transitions and it outputs byte
+code for the Promela statement associated with each transition.
+
+The specification of the byte code was inspired by that of the Java
+Virtual Machine. The byte code instructions can be categorized as:
+arithmetic, memory manipulation, input/output, bitwise/logical/boolean
+operations, and control instructions. There are no explicit branching
+instructions since the transitions \emph{are} the branches.
+
+At compile-time, the set of transitions for a process may contain
+\emph{noop} (no operation) transitions. This simplifies the compilation
+process, because we do not have to treat certain Promela
+statements---such as repeating a loop---differently while constructing
+the transitions. The \emph{noop}s are eliminated after the construction
+of the entire set of transitions. Atomic transitions also need
+correction since \spn{} expects that the final transition in an atomic
+sequence not be marked as atomic.
+
+\subsection*{References}
+Alfred V. Aho, Monica S. Lam, Ravi Sethi, \& Jeffrey D. Ullman.
+\textit{Compilers: Principles, Techniques \& Tools. Second Edition}.
+Pearson, 2007.
+
+Tim Lindholm \& Frank Yellin. \textit{The Java Virtual Machine
+Specification.  Second Edition.} 
+\url{http://java.sun.com/docs/books/jvms/second_edition/html/VMSpecTOC.doc.html}.
+\end{document}
